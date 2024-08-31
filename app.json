@@ -4,11 +4,11 @@
     "slug": "connectit-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logoplash.jpg",
+    "icon": "./assets/images/logoplash.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/logoplash.jpg",
+      "image": "./assets/images/logoplash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logoplash.jpg",
+        "foregroundImage": "./assets/images/logoplash.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.gerazayis.connectitapp"

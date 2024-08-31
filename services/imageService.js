@@ -8,7 +8,7 @@ export const getUserImageSrc= imagePath=>{
         return getSupabaseFileUrl(imagePath)
     
     }else{
-        return require('../assets/images/defaultUser.png')
+        return require('../assets/images/defaultUsers.png')
     }
 }
 
