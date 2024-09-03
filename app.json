@@ -20,12 +20,17 @@
         "foregroundImage": "./assets/images/logoplash.png",
         "backgroundColor": "#ffffff"
       },
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA"
+      ],
       "package": "com.gerazayis.connectitapp"
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/logoplash.ico"
+      "favicon": "./assets/images/logoplash.png"
     },
     "plugins": [
       "expo-router"
@@ -38,7 +43,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "bac3567c-d3cc-42f4-98f0-3d8fea61989e"
+        "projectId": "68ab917e-e655-4a81-baa2-d49bfcc671ac"
       }
     }
   }

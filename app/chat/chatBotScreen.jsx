@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, TouchableOpacity, Text, FlatList, StyleSheet, Image } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, FlatList, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from "../../lib/supabase";
-import { OPENAI_API_KEY } from '../../services/botSevices';
+import { Gemini_api } from '../../services/botSevices';
 import { Header } from '../../components/Header';
 import { hp, wp } from '../../helpers/common';
 import Avatar from '../../components/avatar';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 
-const userIcon = 'https://path-to-your-user-icon.png'; // URL de l'icône de l'utilisateur
-const botIcon = 'https://path-to-your-bot-icon.png'; // URL de l'icône du bot
 
 const ChatbotScreen = () => {
- const {user,setAuth} = useAuth();
+  const {user, setAuth} = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);  // Nouvel état pour l'animation d'écriture du bot
 
   const fetchMessages = async () => {
     const { data, error } = await supabase
@@ -44,6 +43,9 @@ const ChatbotScreen = () => {
       console.error('Erreur lors de l\'ajout du message:', error);
     }
 
+    setInput('');
+    setIsTyping(true);  // Le bot commence à écrire mais je dois reffaire des revisions ici
+
     const response = await fetchGPTResponse(input);
     if (response) {
       const botMessage = { user: 'bot', text: response };
@@ -58,23 +60,27 @@ const ChatbotScreen = () => {
       }
     }
 
-    setInput('');
+    setIsTyping(false); 
   };
 
   const fetchGPTResponse = async (userInput) => {
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${Gemini_api}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [{ role: 'user', content: userInput }],
-          max_tokens: 150,
-          temperature: 0.7
-        })
+          contents: [
+            {
+              parts: [
+                {
+                  text: userInput,
+                },
+              ],
+            },
+          ],
+        }),
       });
 
       if (!response.ok) {
@@ -84,29 +90,54 @@ const ChatbotScreen = () => {
       const data = await response.json();
       console.log('API Response:', data);
 
-      if (data && data.choices && data.choices.length > 0) {
-        return data.choices[0].message.content.trim();
+      if (data && data.candidates && data.candidates.length > 0) {
+        const outputText = data.candidates[0].content.parts[0].text;
+        return outputText.trim();
       } else {
-        throw new Error('La réponse de l\'API GPT est invalide ou vide.');
+        throw new Error('La réponse de l\'API Gemini est invalide ou vide.');
       }
     } catch (error) {
-      console.error('Erreur lors de la récupération de la réponse GPT:', error);
+      console.error('Erreur lors de la récupération de la réponse Gemini:', error);
       return 'Désolé, je ne peux pas répondre pour le moment.';
     }
   };
 
-  const renderMessage = ({ item }) => (
-    <View style={item.user === 'user' ? styles.userMessage : styles.botMessage}>
+const renderMessage = ({ item }) => (
+  <View style={item.user === 'user' ? styles.userMessageContainer : styles.botMessageContainer}>
+    {item.user === 'user' ? (
+      <View style={styles.userHeader}>
         <Avatar
-                size={hp(4.5)}
-                uri={user?.image}
-                rounded={theme.radius.md}
-                />
-      <Text style={item.user === 'user' ? styles.userMessageText : styles.botMessageText}>
-        {item.text}
-      </Text>
-    </View>
-  );
+          size={hp(4.5)}
+          uri={user?.image}
+          rounded={theme.radius.md}
+        />
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
+          <Text style={styles.timestamp}>{new Date(item.created_at).toLocaleTimeString()}</Text>
+        </View>
+      </View>
+    ) : (
+      <View style={styles.botHeader}>
+        <View style={styles.botInfo}>
+          <Text style={styles.botName}>Bot</Text>
+          <Text style={styles.timestamp}>{new Date(item.created_at).toLocaleTimeString()}</Text>
+        </View>
+        <View style={styles.avatar}>
+          <Avatar
+            size={hp(4.5)}
+            uri={require('../../assets/images/bot.png')}
+            rounded={theme.radius.md}
+          />
+        </View>
+      </View>
+    )}
+    <Text style={item.user === 'user' ? styles.userMessageText : styles.botMessageText}>
+      {item.text}
+    </Text>
+  </View>
+);
+
+
 
   useEffect(() => {
     fetchMessages();
@@ -124,6 +155,15 @@ const ChatbotScreen = () => {
           keyExtractor={(item, index) => index.toString()}
           contentContainerStyle={styles.chatContainer}
         />
+
+        {/* Animation de saisie du bot a redefinir aussi */}
+        {isTyping && (
+          <View style={styles.typingIndicator}>
+            <ActivityIndicator size="small" color="#2196F3" />
+            <Text style={styles.typingText}>ConnectIT bot est en train d'écrire...</Text>
+          </View>
+        )}
+
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -145,42 +185,59 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  chatContainer: {
-    padding: 10,
-  },
-  userMessage: {
-    flexDirection: 'row',
-    alignSelf: 'flex-end',
-    backgroundColor: '#2196F3',
-    borderRadius: 20,
-    padding: 10,
-    marginVertical: 5,
-    maxWidth: '80%',
-  },
-  botMessage: {
-    flexDirection: 'row',
+  userMessageContainer: {
     alignSelf: 'flex-start',
-    backgroundColor: '#E1E1E1',
-    borderRadius: 20,
-    padding: 10,
-    marginVertical: 5,
+    marginBottom: 10,
     maxWidth: '80%',
+  },
+  botMessageContainer: {
+    alignSelf: 'flex-end',
+    marginBottom: 10,
+    maxWidth: '80%',
+  },
+  userHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  botHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginBottom: 5,
+  },
+  userInfo: {
+    marginLeft: 10,
+  },
+  botInfo: {
+    marginRight: 10,
+    alignItems: 'flex-end',
+  },
+  userName: {
+    fontWeight: 'bold',
+  },
+  botName: {
+    fontWeight: 'bold',
+  },
+  timestamp: {
+    fontSize: 12,
+    color: 'grey',
   },
   userMessageText: {
+    backgroundColor: '#2196F3',
     color: '#fff',
-    marginLeft: 10,
+    borderRadius: 15,
+    padding: 10,
+    alignSelf: 'flex-start',
   },
   botMessageText: {
+    backgroundColor: '#E1E1E1',
     color: '#000',
-    marginLeft: 10,
-  },
-  avatar: {
-    width: 30,
-    height: 30,
     borderRadius: 15,
-    backgroundColor: '#ccc',
+    padding: 10,
+    alignSelf: 'flex-end',
   },
-  inputContainer: {
+inputContainer: {
     flexDirection: 'row',
     padding: 10,
     borderTopWidth: 1,
@@ -200,6 +257,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+    avatar: {
+    width: hp(4.5),
+    height:hp(4.5),
+    borderRadius: 15,
+    backgroundColor: '#ccc',
+    marginRight: 10,
   },
 });
 

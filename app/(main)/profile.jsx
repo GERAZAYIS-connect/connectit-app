@@ -1,5 +1,5 @@
-import { Alert, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import React from 'react';
+import { Alert, FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'expo-router';
@@ -9,11 +9,18 @@ import { hp, wp } from '../../helpers/common';
 import Icon from '../../assets/icons';
 import { supabase } from '../../lib/supabase';
 import Avatar from '../../components/avatar';
+import { fetchPost } from '../../services/postService';
+import PostCard from '../../components/PostCard';
+import Loading from '../../components/loading';
 
-
+var limit =0;
 const Profile = () => {
     const {user,setAuth} = useAuth();
     const router = useRouter();
+
+    const [post,setPost]=useState([]);
+    const [hasMore,setHasMore]=useState(true);
+
     const onLogout = async () => {
     setAuth(null);
     const {error} = await supabase.auth.signOut();
@@ -22,6 +29,18 @@ const Profile = () => {
         Alert.alert('deconnexion', ' erreur de deconnexion😂');
     }
     }
+
+    const getPost = async () => {
+    if(!hasMore) return null;
+    limit=limit+10;
+    //appel de l'api pour recuperer les post
+    console.log('fetching Poost: ',limit);
+     let res= await fetchPost(limit, user.id);
+    if(res.success){
+      if(post.length==res.data.length) setHasMore(false);
+      setPost(res.data);
+    }
+  }
 
     const handleLogout= async()=>{
         Alert.alert("confirmer","Voulez vous vraiment vous deconnecter?", [{
@@ -38,7 +57,35 @@ const Profile = () => {
     return (
         
         <ScreenWrapper bg='white'>
-            <UserHeader user={user} router={router} handleLogout={handleLogout}/>
+            
+
+            <FlatList
+            data={post}
+            ListHeaderComponent={<UserHeader user={user} router={router} handleLogout={handleLogout}/>}
+            ListHeaderComponentStyle={{marginBottom:30}}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.liststyle}
+            keyExtractor={item=>item.id.toString()}
+            renderItem={({item})=><PostCard
+            item={item}
+            currentUser={user}
+            router={router}
+            />  
+          } 
+          onEndReached={()=>{
+            getPost();
+            console.log('go to the ends')
+          }}
+          onEndReachedThreshold={0}
+          ListFooterComponent={hasMore?(
+            <View style={{marginVertical:post.length==0? 100:30}}>  
+              <Loading />
+            </View>
+          ):(<View style={{marginVertical:post.length==0? 200:30}}> 
+            <Text style={styles.noPost}>Vous avez consulté(e) tous les Posts</Text>
+            </View>)}
+          
+        />
         </ScreenWrapper>
     );
 };

@@ -25,7 +25,7 @@ const MainLayout = () => {
             if (session) { 
                 setAuth(session?.user);
                 updateUserData(session?.user, session?.user?.email);  
-                router.replace('/main/home');
+                router.replace('/(main)/home');
             } else {
                 setAuth(null);
                 router.replace('/welcome');

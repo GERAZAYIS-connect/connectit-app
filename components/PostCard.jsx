@@ -1,4 +1,4 @@
-import { Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Alert, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { theme } from '../constants/theme'
 import { hp,stripHtmlTags,wp } from '../helpers/common'
@@ -20,15 +20,21 @@ const PostCard = ({
     currentUser,
     router,
     hasShadow=true,
-    showMoreIcon=true
+    showMoreIcon=true,
+    showDelete=false,
+    showsDelete = false,
+    onDelete = ()=>{},
+    onEdit=()=>{}
+
 }) => {
     LogBox.ignoreLogs([
   'Warning: TRenderEngineProvider: Support for defaultProps will be removed from function components in a future major release.',
   'Warning: MemoizedTNodeRenderer: Support for defaultProps will be removed from memo components in a future major release.',
   'Warning: TNodeChildrenRenderer: Support for defaultProps will be removed from function components in a future major release.',
 ]);
-    const [likes, setLiked]=useState([]);
     const [loading, setLoading]=useState(false)
+    const [likes, setLikes] = useState([]);
+    const [liked, setLiked] = useState(false);
     const shadowStyles={
         shadowOffset:{
             width:0,
@@ -48,33 +54,35 @@ const PostCard = ({
         }
         Share.share(content);
     }
-    const onLike=async ()=>{
 
-        if(liked){
-            let updatedLikes= likes.filter(like=>like.userId!=currentUser?.id);
-            setLiked([...updatedLikes]);
-            let res = removePostLike(item?.id, currentUser?.id);
-            console.log('remove like post: ',res);
-            if(!res.success){
-                Alert.alert('Post', 'impossible de liker le post');
-            } 
-        }else{
-            let data = {
-                userId: currentUser?.id,
-                postId: item?.id
-            }
-            
-            setLiked([...likes, data]);
-            
-            let res = await createPostLike(data);
-            console.log('like post: ',res);
-            if(!res.success){
-                Alert.alert('Post', 'impossible de liker le post');
-            }   
+
+const onLike = async () => {
+    if (liked) {
+        let updatedLikes = likes.filter(like => like.userId != currentUser?.id);
+        setLikes(updatedLikes);
+        setLiked(false);
+        let res = removePostLike(item?.id, currentUser?.id);
+        if (!res.success) {
+            Alert.alert('Post', 'Impossible de retirer le like.');
         }
-
+    } else {
+        let data = {
+            userId: currentUser?.id,
+            postId: item?.id,
+        };
+        setLikes([...likes, data]);
+        setLiked(true);
+        let res = await createPostLike(data);
+        if (!res.success) {
+            Alert.alert('Post', 'Impossible d\'ajouter le like.');
+        }
     }
+};
 
+useEffect(() => {
+    setLikes(item?.postLikes || []);
+    setLiked(item?.postLikes?.some(like => like.userId === currentUser?.id));
+}, [item?.postLikes, currentUser?.id]);
     useEffect(() => {
         setLiked(item?.postLikes);
     }, [])
@@ -84,9 +92,22 @@ const PostCard = ({
         router.push({pathname:'postDetails', params:{postId:item?.id}})
     }
 
+    const handlePostDelete=()=>{
+        Alert.alert("confirmer","supprimer le Post?", [{
+            text:'non',
+            onPress:()=>console.log('modal canceled'),
+            style:'cancel'
+    },
+    {
+            text: 'oui',
+            onPress: () =>onDelete(item),
+            style: 'destructive'
+    }])
+    }
+
     const createdAt = moment(item?.created_at).format('D MMMM')
     const createdAttime = moment(item?.created_at).format('hh:mm')
-    const liked =likes.filter(likes=>likes.userId==currentUser?.id)[0]? true:false;
+
   return (
     <View style={[styles.container, hasShadow && shadowStyles] }>
       <View style={[styles.header]}> 
@@ -114,6 +135,18 @@ const PostCard = ({
                     )
                 }
                 
+                {
+                    showDelete && currentUser.id == item?.userId &&(
+                        <View style={styles.actions}>
+                            <TouchableOpacity onPress={()=>onEdit(item)}>
+                                <Icon name="edit" size={hp(2.5)} color={theme.colors.text}/>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handlePostDelete}>
+                                <Icon name="delete" size={hp(2.5)} color='red'/>
+                            </TouchableOpacity>
+                        </View>
+                    )
+                }
             </View>
       </View>
       <View style={styles.content}>

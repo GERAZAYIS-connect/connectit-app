@@ -1,7 +1,7 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useEffect, useRef, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { createComment, fetchPostDetails } from '../../services/postService';
+import { createComment, fetchPostDetails, removeComment, removePost } from '../../services/postService';
 import { theme } from '../../constants/theme';
 import { hp,wp } from '../../helpers/common';
 import PostCard from '../../components/PostCard';
@@ -10,9 +10,12 @@ import Loading from '../../components/loading';
 import Input from '../../components/input'
 import Icon from '../../assets/icons';
 import CommentItem from '../../components/commentItem';
+import { supabase } from '../../lib/supabase';
+import { getUserData } from '../../services/userService';
+import { createNotification } from '../../services/notificationService';
 
 const PostDetails = () => {
-  const {postId}= useLocalSearchParams();
+  const {postId, commentId}= useLocalSearchParams();
   const [post, setPost]=useState(null);
   const{user}=useAuth();
   const [startloading, setStartLoarding]=useState(true);
@@ -21,9 +24,81 @@ const PostDetails = () => {
   const commentRef=useRef("");
   const [loading,setLoading]=useState(false)
 
-  useEffect(()=>{
+ const onDeletePost = async (item) =>{
+   let res = await removePost(post.id);
+   if (res.success){
+    router.back()
+   }else{
+    Alert.alert("Publication", res.msg)
+   }
+  }
+
+  const onEditPost =async (item)=>{
+    router.back();
+    router.push({pathname:'newpost', params:{...item}})
+
+  }
+
+  const onDeleteComment = async (comment) => {
+  if (!comment || !comment.id) {
+    Alert.alert('Erreur', 'ID de commentaire invalide');
+    return;
+  }
+  
+  const resu = await removeComment(comment.id);
+
+  if (resu.success) {
+    setPost(prevPost => {
+      let updatedPost = { ...prevPost };
+      updatedPost.comments = updatedPost.comments.filter(c => c.id !== comment.id);
+      return updatedPost;
+    });
+  } else {
+    Alert.alert('Commentaire', resu.msg);
+  }
+};
+
+
+  const handleNewComment=async (payload)=>{
+    if(payload){
+      let NewComment = {...payload.new};
+      console.log(NewComment)
+      let res= await getUserData(NewComment.userId);
+      NewComment.user=res.success? res.data:{};
+      setPost(prevPost=>{
+        return{
+          ...prevPost,
+          comment:[NewComment, ...prevPost.comment]
+        }
+    })
+  }
+}
+useEffect(() => {
+  // Channel de commentaires
+  let commentchannel = supabase
+    .channel('comments')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'comments',
+      filter: `postId=eq.${postId}`
+    }, handleNewComment)
+    .subscribe();
+
+  const intervalId = setInterval(() => {
     getPostDetails();
-  },[]);
+  }, 10000); // Actualiser toutes les 10 secondes
+
+  // Obtenir les détails du post lors du montage du composant
+  getPostDetails();
+
+  return () => {
+    supabase.removeChannel(commentchannel);
+    clearInterval(intervalId);
+  };
+}, []);
+
+
   const onNewComment=async ()=>{
     if(!commentRef.current) return null;
     let data={
@@ -36,7 +111,20 @@ const PostDetails = () => {
     let res= await createComment(data);
     setLoading(false)
     if(res.success){
-      //envoie notification ap
+      //envoie notification
+      if(user.id!=post.userId){
+        let notifier={
+          senderId: user.id,
+          receverId: post.userId,
+          title: ' a un nouveaux commentaire sur votre post',
+          data: JSON.stringify({
+            postId:post.id,
+            commentId: res?.data?.id
+          })
+        }
+        createNotification(notifier)
+      }
+
       inputRef?.current?.clear();
       commentRef.current="";
 
@@ -76,6 +164,9 @@ const PostDetails = () => {
         router={router}
         hasShadow={true}
         showMoreIcon={false}
+        showDelete={true}
+        onDelete={onDeletePost}
+        onEdit={onEditPost}
         />
         {/** commentaire */}
         <View style={styles.inputContainer}>
@@ -106,7 +197,9 @@ const PostDetails = () => {
               <CommentItem
               key={comment?.id?.toString()}
               item={comment}
-              
+              highligth= {comment.id ==commentId}
+              onDelete={onDeleteComment}
+              canDelete ={ user.id==comment.userId || user.id==post.userId }
               />
             )
           }

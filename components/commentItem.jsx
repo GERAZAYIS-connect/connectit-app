@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React from 'react'
 import { hp, wp } from '../helpers/common'
 import { theme } from '../constants/theme'
@@ -8,15 +8,29 @@ import Icon from '../assets/icons'
 
 const CommentItem = ({
     item,
-    canDelete=false
+    canDelete=false,
+    onDelete=()=>{},
+     highligth = false
 }) => {
     const createdAt= moment(item?.created_at).format('MMM d');
+    const handleDelete=()=>{
+        Alert.alert("confirmer","supprimer le commentaire", [{
+            text:'non',
+            onPress:()=>console.log('modal canceled'),
+            style:'cancel'
+    },
+    {
+            text: 'oui',
+            onPress: () =>onDelete(item),
+            style: 'destructive'
+    }])
+    }
   return (
     <View style={styles.container}>
         <Avatar 
         uri={item?.user?.image}
         />
-        <View style={styles.content}>
+        <View style={[styles.content,  highligth &&  styles.highligth]}>
             <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}>
                 <View style={styles.nameContainer}>
                     <Text style={styles.text}>
@@ -33,7 +47,7 @@ const CommentItem = ({
                 </View>
                 {
                     canDelete && (
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={handleDelete}>
                             <Icon name="delete" size={20} color={'red'}/>
                         </TouchableOpacity>        
                     )
@@ -56,8 +70,7 @@ export default CommentItem
 const styles = StyleSheet.create({
     container:{
     flex:1,
-    flexDirection:'row',
-    paddingVertical:7,
+
   },
   content:{
     backgroundColor:'rgba(0,0,0,0.03)',
@@ -69,7 +82,7 @@ const styles = StyleSheet.create({
     borderCurve:'continuous',
     marginLeft:12
   },
-  Highlight:{
+   highligth:{
     borderWidth:0.2,
     backgroundColor:'white',
     borderColor:theme.colors.dark,
@@ -88,5 +101,6 @@ const styles = StyleSheet.create({
     fontSize:hp(1.6),
     font:theme.fonts.medium,
     color:theme.colors.dark
-  }
+  },
+
 })

@@ -1,12 +1,12 @@
 import {  ScrollView,StyleSheet, Text, TouchableOpacity, View, Image, Pressable, Alert } from 'react-native'
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import ScreenWrapper from '../../components/ScreenWrapper'
 import {Header} from '../../components/Header'
 import { theme } from '../../constants/theme'
 import { hp, wp } from '../../helpers/common'
 import {useAuth} from '../../contexts/AuthContext'
 import Avatar  from '../../components/avatar'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import RichTextEditor from '../../components/RichTextEditor'
 import Icon from '../../assets/icons'
 import Button from '../../components/button'
@@ -22,7 +22,21 @@ const Newpost = () => {
   const editorRef = useRef(null);
   const router = useRouter();
   const [Loading, setLoading]=useState(false);
-  const [file, setFile]=useState();
+  const [file, setFile]=useState(file);
+  const post =useLocalSearchParams();
+  console.log('post',post);
+
+
+  useEffect(()=>{
+    if(post && post.id){
+      bodyRef.current = post.body;
+      setFile(post.file || null);
+      setTimeout(()=>{
+         editorRef?.current?.setContentHTML(post.body);
+      }, 300)
+     
+    }
+  },[])
 
   const onPick = async(isimage)=>{
     let mediaConfig={
@@ -78,7 +92,9 @@ const getFileUri=(file)=>{
       body: bodyRef.current,
       userId: user?.id
     }
-    //creation du post
+
+    if (post && post.id) data.id=post.id;
+
     setLoading(true);
     let res = await creatorUpdatePost(data);
     setLoading(false);
@@ -91,7 +107,7 @@ const getFileUri=(file)=>{
       Alert.alert('Post', res.msg);
     }
   }
-  console.log('image uir',getFileUri(file))
+  //console.log('image uir',getFileUri(file))
   return (
     <ScreenWrapper bg="white">
       <View style={styles.container}>
@@ -126,7 +142,8 @@ const getFileUri=(file)=>{
                   <Video
                   style={{flex:1}}
                   source={{
-                    uri:getFileUri(file)}}
+                    uri:getFileUri(file)
+                  }}
                   useNativeControls
                   resizeMode='cover'
                   isLooping
@@ -156,7 +173,7 @@ const getFileUri=(file)=>{
         </ScrollView>
         <Button 
         buttonStyle={{height:hp(6,5)}}
-        title="Publier"
+        title={post && post.id? "mettre à jour":"post"}
         loading={Loading}
         hasShadow={false}
         onPress={()=>onsubmit()}/>

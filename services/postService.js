@@ -32,9 +32,29 @@ try {
 }
 }
 
-export const fetchPost=async(limit=10)=>{
+export const fetchPost=async(limit=10, userId)=>{
     try {
+        if(userId){
         const {data,error}=await supabase
+        .from ('post')
+        .select(`
+        *,
+        user:users (id, name, image),
+        postLikes (*),
+        comments (count)
+    `)
+    .eq('userId', userId)
+        .order('created_at',{ascending:false})
+        .limit(limit);
+
+        if(error){
+            console.log("fetchpost error: ", error)
+            return{success:false, msg:"imposte de colleter les post"};
+        }
+
+        return{success:true, data};
+        }else{
+            const {data,error}=await supabase
         .from ('post')
         .select(`
         *,
@@ -51,6 +71,7 @@ export const fetchPost=async(limit=10)=>{
         }
 
         return{success:true, data};
+        }
     } catch (error) {
         console.log("fetchpost error: ", error)
         return{success:false, msg:"imposte de colleter les post"};
@@ -144,3 +165,56 @@ export const createComment=async(comment)=>{
         return{success:false, msg:"impossible dde commenter le post"};
     }
 }
+
+export const removeComment = async (commentId) => {
+  if (!commentId) {
+    console.log("ID de commentaire invalide:", commentId);
+    return { success: false, msg: "ID de commentaire invalide" };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('comments')
+      .delete()
+      .eq('id', commentId);
+      
+    console.log('Numéro commentaire:', commentId);
+    
+    if (error) {
+      console.log("Remove comment error 1: ", error);
+      return { success: false, msg: "Impossible de supprimer le commentaire" };
+    }
+
+    return { success: true, data: { commentId } };
+  } catch (error) {
+    console.log("Comment Remove error: ", error);
+    return { success: false, msg: "Impossible de supprimer le commentaire du post" };
+  }
+};
+
+
+export const removePost = async (postId) => {
+  if (!postId) {
+    console.log("ID du post invalide:", commentId);
+    return { success: false, msg: "ID du post invalide" };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('post')
+      .delete()
+      .eq('id', postId);
+      
+    console.log('Numéro commentaire:', postId);
+    
+    if (error) {
+      console.log("Remove comment error 1: ", error);
+      return { success: false, msg: "Impossible de supprimer post" };
+    }
+
+    return { success: true, data: { postId } };
+  } catch (error) {
+    console.log("Post Remove error: ", error);
+    return { success: false, msg: "Impossible de supprimer le post" };
+  }
+};
