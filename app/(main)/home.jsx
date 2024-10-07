@@ -31,7 +31,7 @@ const home = () => {
     },
     {
       icon: <MaterialIcons name="forum" size={28} color="white" />,
-      onPress: () => alert('Forum')
+      onPress: () => router.push('../forum/forumHome')
     },
     {
       icon: <MaterialIcons name="post-add" size={24} color="white" />,
