@@ -20,7 +20,7 @@ import Backbutton from "../components/BackButton";
 import {hp, wp} from "../helpers/common";
 import Input from "../components/input";
 import CustomButton from "../components/button";
-import {supabase} from "../lib/supabase"; // Ensure you import your custom button component
+import {supabase} from "../lib/supabase"; 
 import Loading from "../components/loading";
 
 
